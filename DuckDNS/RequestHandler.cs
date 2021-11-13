@@ -1,4 +1,6 @@
-﻿using System.Net.Http;
+﻿using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace DuckDNS
@@ -13,10 +15,11 @@ namespace DuckDNS
             using var reader = new StreamReader(stream);
             return await reader.ReadToEndAsync();*/
 
-            using var client = new HttpClient();
-            using HttpResponseMessage response = await client.GetAsync(uri);
-            using HttpContent content = response.Content;
-            return await content.ReadAsStringAsync();
+            HttpWebRequest request = WebRequest.CreateHttp(uri);
+            using WebResponse response = await request.GetResponseAsync();
+            using Stream stream = response.GetResponseStream();
+            using var reader = new StreamReader(stream);
+            return await reader.ReadToEndAsync();
         }
     }
 }
