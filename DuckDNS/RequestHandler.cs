@@ -14,8 +14,7 @@ namespace DuckDNS
             return await reader.ReadToEndAsync();*/
 
             using var client = new HttpClient();
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            using HttpResponseMessage response = await client.SendAsync(request);
+            using HttpResponseMessage response = await client.GetAsync(uri);
             using HttpContent content = response.Content;
             return await content.ReadAsStringAsync();
         }
