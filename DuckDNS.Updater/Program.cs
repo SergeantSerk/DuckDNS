@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace DuckDNS.Updater
 {
@@ -15,6 +16,9 @@ namespace DuckDNS.Updater
 
         [Option('d', "domains", Required = true, HelpText = "Domains to update, seperated as a comma-separated value.")]
         public IEnumerable<string> Domains { get; set; }
+
+        [Option('i', "interval", Required = false, HelpText = "The period, in non-negative seconds, to refresh and update IPv(4|6) address. 0 seconds is one-shot execution.", Min = 0)]
+        public int Interval { get; set; }
 
         [Option("ipv4", Default = false, Required = false, HelpText = "Update IPv4 address only.")]
         public bool IPv4Only { get; set; }
@@ -55,28 +59,47 @@ namespace DuckDNS.Updater
 
         private static async Task RunOptionsAsync(CommandLineOptions arg)
         {
-            IPAddress ipv4Address = null, ipv6Address = null;
-
-            // Condition: Both -4 and -6 or neither are specified
-            bool bothOrNeither = (arg.IPv4Only && arg.IPv6Only) || (!arg.IPv4Only && !arg.IPv6Only);
-            if (bothOrNeither || (arg.IPv4Only && !arg.IPv6Only))
+            var timer = new Timer(arg.Interval * 1000)
             {
-                // Handle IPv4
-                ipv4Address = await GetIPAddressAsync(AddressFamily.InterNetwork);
-            }
+                AutoReset = arg.Interval != 0,
+                Enabled = true
+            };
 
-            if (bothOrNeither || (arg.IPv6Only && !arg.IPv4Only))
+            timer.Elapsed += async (o, e) =>
             {
-                // Handle IPv6
-                ipv6Address = await GetIPAddressAsync(AddressFamily.InterNetworkV6);
-            }
+                try
+                {
+                    IPAddress ipv4Address = null, ipv6Address = null;
 
-            var duckDnsApi = new DuckDnsApi(arg.Token);
-            foreach (var domain in arg.Domains)
-            {
-                await UpdateAddress(duckDnsApi, ipv4Address, arg.Verbose, domain);
-                await UpdateAddress(duckDnsApi, ipv6Address, arg.Verbose, domain);
-            }
+                    // Condition: Both -4 and -6 or neither are specified
+                    bool bothOrNeither = (arg.IPv4Only && arg.IPv6Only) || (!arg.IPv4Only && !arg.IPv6Only);
+                    if (bothOrNeither || (arg.IPv4Only && !arg.IPv6Only))
+                    {
+                        // Handle IPv4
+                        ipv4Address = await GetIPAddressAsync(AddressFamily.InterNetwork);
+                    }
+
+                    if (bothOrNeither || (arg.IPv6Only && !arg.IPv4Only))
+                    {
+                        // Handle IPv6
+                        ipv6Address = await GetIPAddressAsync(AddressFamily.InterNetworkV6);
+                    }
+
+                    var duckDnsApi = new DuckDnsApi(arg.Token);
+                    foreach (var domain in arg.Domains)
+                    {
+                        await UpdateAddress(duckDnsApi, ipv4Address, arg.Verbose, domain);
+                        await UpdateAddress(duckDnsApi, ipv6Address, arg.Verbose, domain);
+                    }
+                }
+                finally
+                {
+                    timer.Dispose();
+                }
+            };
+
+            await Task.Delay(-1);
+            timer.Dispose();    // If it ever gets here
         }
 
         private static async Task<IPAddress> GetIPAddressAsync(AddressFamily addressFamily)
