@@ -17,7 +17,7 @@ namespace DuckDNS.Updater
         [Option('d', "domains", Required = true, HelpText = "Domains to update, seperated as a comma-separated value.")]
         public IEnumerable<string> Domains { get; set; }
 
-        [Option('i', "interval", Required = false, HelpText = "The period, in non-negative seconds, to refresh and update IPv(4|6) address. 0 seconds is one-shot execution.", Min = 0)]
+        [Option('i', "interval", Required = false, HelpText = "The period, in non-negative seconds, to refresh and update IPv(4|6) address. 0 seconds is one-shot execution.", Min = 1)]
         public int Interval { get; set; }
 
         [Option("ipv4", Default = false, Required = false, HelpText = "Update IPv4 address only.")]
