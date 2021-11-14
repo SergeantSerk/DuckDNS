@@ -75,7 +75,7 @@ namespace DuckDNS.Updater
             Console.WriteLine("Triggering one-shot before delegating timer...");
             await TriggerUpdateAsync(timer, arg);
 
-            Console.WriteLine($"Delegating timer to trigger update every {timer.Interval}-second intervals...");
+            Console.WriteLine($"Delegating timer to trigger update every {timer.Interval / 1000}-second intervals...");
             timer.Elapsed += async (o, e) =>
             {
                 await TriggerUpdateAsync(timer, arg);
