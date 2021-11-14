@@ -64,9 +64,11 @@ namespace DuckDNS.Updater
                 AutoReset = arg.Interval != 0,
                 Enabled = true
             };
+            Console.WriteLine($"Set up and enabled timer with {arg.Interval}-second intervals and auto-reset {(timer.AutoReset ? "enabled" : "disabled")}.");
 
             timer.Elapsed += async (o, e) =>
             {
+                Console.WriteLine("Timer triggered, beginning update...");
                 try
                 {
                     IPAddress ipv4Address = null, ipv6Address = null;
@@ -76,13 +78,15 @@ namespace DuckDNS.Updater
                     if (bothOrNeither || (arg.IPv4Only && !arg.IPv6Only))
                     {
                         // Handle IPv4
-                        ipv4Address = await GetIPAddressAsync(AddressFamily.InterNetwork);
+                        
+                        Console.WriteLine(ipv4Address = await GetIPAddressAsync(AddressFamily.InterNetwork));
                     }
 
                     if (bothOrNeither || (arg.IPv6Only && !arg.IPv4Only))
                     {
                         // Handle IPv6
-                        ipv6Address = await GetIPAddressAsync(AddressFamily.InterNetworkV6);
+                        Console.Write("Acquiring IPv6 address...");
+                        Console.WriteLine(ipv6Address = await GetIPAddressAsync(AddressFamily.InterNetworkV6));
                     }
 
                     var duckDnsApi = new DuckDnsApi(arg.Token);
@@ -94,6 +98,7 @@ namespace DuckDNS.Updater
                 }
                 finally
                 {
+                    Console.WriteLine("Encountered an error while running the timer, cleaning up...");
                     timer.Dispose();
                 }
             };
@@ -121,12 +126,13 @@ namespace DuckDNS.Updater
                 return;
             }
 
+            Console.Write($"Updating domain \"{string.Join(", ", domain)}\" to {address}...");
             string result = await duckDnsApi.UpdateAsync(
                 ipv4: address.AddressFamily == AddressFamily.InterNetwork ? address : null,
                 ipv6: address.AddressFamily == AddressFamily.InterNetworkV6 ? address : null,
                 verbose: verbose,
                 domains: domain);
-            Console.WriteLine($"Updating domain \"{string.Join(", ", domain)}\" to {address}...{result}");
+            Console.WriteLine(result);
         }
     }
 }
