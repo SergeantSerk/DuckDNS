@@ -17,7 +17,7 @@ namespace DuckDNS.Updater
         [Option('d', "domains", Required = true, HelpText = "Domains to update, seperated as a comma-separated value.")]
         public IEnumerable<string> Domains { get; set; }
 
-        [Option('i', "interval", Required = false, HelpText = "The period, in non-negative seconds, to refresh and update IPv(4|6) address. 0 seconds is one-shot execution.", Min = 1)]
+        [Option('i', "interval", Required = false, HelpText = "The period, in non-negative seconds, to refresh and update IPv(4|6) address. 0 seconds is one-shot execution.")]
         public int Interval { get; set; }
 
         [Option("ipv4", Default = false, Required = false, HelpText = "Update IPv4 address only.")]
@@ -59,6 +59,12 @@ namespace DuckDNS.Updater
 
         private static async Task RunOptionsAsync(CommandLineOptions arg)
         {
+            if (arg.Interval < 0)
+            {
+                Console.WriteLine("Timer interval was set to a value less than 0. Setting to 0 and making it one-shot.");
+                arg.Interval = 0;
+            }
+
             var timer = new Timer(arg.Interval * 1000)
             {
                 AutoReset = arg.Interval != 0,
@@ -66,45 +72,54 @@ namespace DuckDNS.Updater
             };
             Console.WriteLine($"Set up and enabled timer with {arg.Interval}-second intervals and auto-reset {(timer.AutoReset ? "enabled" : "disabled")}.");
 
+            Console.WriteLine("Triggering one-shot before delegating timer...");
+            await TriggerUpdateAsync(arg);
+
+            Console.WriteLine($"Delegating timer to trigger update every {timer.Interval}-second intervals...");
             timer.Elapsed += async (o, e) =>
             {
-                Console.WriteLine("Timer triggered, beginning update...");
-                try
-                {
-                    IPAddress ipv4Address = null, ipv6Address = null;
-
-                    // Condition: Both -4 and -6 or neither are specified
-                    bool bothOrNeither = (arg.IPv4Only && arg.IPv6Only) || (!arg.IPv4Only && !arg.IPv6Only);
-                    if (bothOrNeither || (arg.IPv4Only && !arg.IPv6Only))
-                    {
-                        // Handle IPv4
-                        
-                        Console.WriteLine(ipv4Address = await GetIPAddressAsync(AddressFamily.InterNetwork));
-                    }
-
-                    if (bothOrNeither || (arg.IPv6Only && !arg.IPv4Only))
-                    {
-                        // Handle IPv6
-                        Console.Write("Acquiring IPv6 address...");
-                        Console.WriteLine(ipv6Address = await GetIPAddressAsync(AddressFamily.InterNetworkV6));
-                    }
-
-                    var duckDnsApi = new DuckDnsApi(arg.Token);
-                    foreach (var domain in arg.Domains)
-                    {
-                        await UpdateAddress(duckDnsApi, ipv4Address, arg.Verbose, domain);
-                        await UpdateAddress(duckDnsApi, ipv6Address, arg.Verbose, domain);
-                    }
-                }
-                finally
-                {
-                    Console.WriteLine("Encountered an error while running the timer, cleaning up...");
-                    timer.Dispose();
-                }
+                await TriggerUpdateAsync(arg);
             };
 
             await Task.Delay(-1);
             timer.Dispose();    // If it ever gets here
+        }
+
+        private static async Task TriggerUpdateAsync(CommandLineOptions arg)
+        {
+            Console.WriteLine("Timer triggered, beginning update...");
+            try
+            {
+                IPAddress ipv4Address = null, ipv6Address = null;
+
+                // Condition: Both -4 and -6 or neither are specified
+                bool bothOrNeither = (arg.IPv4Only && arg.IPv6Only) || (!arg.IPv4Only && !arg.IPv6Only);
+                if (bothOrNeither || (arg.IPv4Only && !arg.IPv6Only))
+                {
+                    // Handle IPv4
+
+                    Console.WriteLine(ipv4Address = await GetIPAddressAsync(AddressFamily.InterNetwork));
+                }
+
+                if (bothOrNeither || (arg.IPv6Only && !arg.IPv4Only))
+                {
+                    // Handle IPv6
+                    Console.Write("Acquiring IPv6 address...");
+                    Console.WriteLine(ipv6Address = await GetIPAddressAsync(AddressFamily.InterNetworkV6));
+                }
+
+                var duckDnsApi = new DuckDnsApi(arg.Token);
+                foreach (var domain in arg.Domains)
+                {
+                    await UpdateAddress(duckDnsApi, ipv4Address, arg.Verbose, domain);
+                    await UpdateAddress(duckDnsApi, ipv6Address, arg.Verbose, domain);
+                }
+            }
+            finally
+            {
+                Console.WriteLine("Encountered an error while running the timer, cleaning up...");
+                timer.Dispose();
+            }
         }
 
         private static async Task<IPAddress> GetIPAddressAsync(AddressFamily addressFamily)
