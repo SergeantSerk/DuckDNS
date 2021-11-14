@@ -115,10 +115,11 @@ namespace DuckDNS.Updater
                     await UpdateAddress(duckDnsApi, ipv6Address, arg.Verbose, domain);
                 }
             }
-            finally
+            catch (Exception ex)
             {
                 Console.WriteLine("Encountered an error while running the timer, cleaning up...");
                 timer.Dispose();
+                throw ex;
             }
         }
 
