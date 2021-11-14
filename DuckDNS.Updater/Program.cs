@@ -73,19 +73,19 @@ namespace DuckDNS.Updater
             Console.WriteLine($"Set up and enabled timer with {arg.Interval}-second intervals and auto-reset {(timer.AutoReset ? "enabled" : "disabled")}.");
 
             Console.WriteLine("Triggering one-shot before delegating timer...");
-            await TriggerUpdateAsync(arg);
+            await TriggerUpdateAsync(timer, arg);
 
             Console.WriteLine($"Delegating timer to trigger update every {timer.Interval}-second intervals...");
             timer.Elapsed += async (o, e) =>
             {
-                await TriggerUpdateAsync(arg);
+                await TriggerUpdateAsync(timer, arg);
             };
 
             await Task.Delay(-1);
             timer.Dispose();    // If it ever gets here
         }
 
-        private static async Task TriggerUpdateAsync(CommandLineOptions arg)
+        private static async Task TriggerUpdateAsync(Timer timer, CommandLineOptions arg)
         {
             Console.WriteLine("Timer triggered, beginning update...");
             try
