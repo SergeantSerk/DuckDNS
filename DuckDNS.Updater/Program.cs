@@ -97,7 +97,7 @@ namespace DuckDNS.Updater
                 if (bothOrNeither || (arg.IPv4Only && !arg.IPv6Only))
                 {
                     // Handle IPv4
-
+                    Console.Write("Acquiring IPv4 address...");
                     Console.WriteLine(ipv4Address = await GetIPAddressAsync(AddressFamily.InterNetwork));
                 }
 
